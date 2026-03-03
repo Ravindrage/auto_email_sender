@@ -1,0 +1,14 @@
+{
+  "name": "yourname/linkedin-auto-email",
+  "description": "LinkedIn job application auto-email system",
+  "type": "project",
+  "require": {
+    "php": ">=8.1",
+    "phpmailer/phpmailer": "^6.9"
+  },
+  "autoload": {
+    "psr-4": {
+      "App\\": "src/"
+    }
+  }
+}

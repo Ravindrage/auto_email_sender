@@ -1,0 +1,8 @@
+[phases.setup]
+nixPkgs = ["php81", "php81Extensions.imap", "php81Extensions.mbstring", "php81Extensions.openssl", "composer"]
+
+[phases.install]
+cmds = ["composer install --no-dev --optimize-autoloader"]
+
+[start]
+cmd = "php main.php"

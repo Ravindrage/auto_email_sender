@@ -1,124 +1,112 @@
-# LinkedIn Auto-Email System — Setup Guide
-## PythonAnywhere Deployment
+# LinkedIn Auto-Email System (PHP) — Railway Deployment
 
----
-
-## 📁 Files in This Project
+## 📁 Project Files
 ```
 linkedin_auto_email/
-├── config.py          ← Edit YOUR settings here
-├── main.py            ← Main automation script
-├── applicants.csv     ← Manual fallback: add applicants here
-├── sent_emails.json   ← Auto-created: tracks who got emailed
-└── auto_email.log     ← Auto-created: activity log
+├── main.php           ← Entry point — run this
+├── config.php         ← All settings (reads Railway env vars)
+├── mailer.php         ← Sends email via Gmail SMTP (PHPMailer)
+├── imap_fetch.php     ← Reads LinkedIn notifications from Gmail
+├── csv_fetch.php      ← CSV fallback loader
+├── sent_log.php       ← Tracks who already got emailed
+├── logger.php         ← Logging utility
+├── composer.json      ← PHPMailer dependency
+├── railway.json       ← Railway cron: runs every hour
+├── nixpacks.toml      ← PHP 8.1 + IMAP extension config
+├── applicants.csv     ← Manual fallback: add applicant emails here
+└── data/              ← Auto-created: logs + sent_emails.json
 ```
 
 ---
 
-## ⚙️ STEP 1 — Enable Gmail App Password
+## ⚙️ STEP 1 — Get Gmail App Password
 
-LinkedIn notifications come to your Gmail. We read them via IMAP.
-
-1. Go to: https://myaccount.google.com/security
-2. Enable **2-Step Verification** (required)
-3. Go to: https://myaccount.google.com/apppasswords
-4. Create App Password → Select "Mail" → Copy the 16-char password
-5. Paste it in `config.py` → `EMAIL_PASSWORD`
-
-Also enable IMAP in Gmail:
-- Gmail Settings → See all settings → Forwarding and POP/IMAP → Enable IMAP
+1. Visit: https://myaccount.google.com/security
+2. Enable **2-Step Verification**
+3. Visit: https://myaccount.google.com/apppasswords
+4. Create password → "Mail" → copy 16-char code
+5. Enable IMAP: Gmail → Settings → Forwarding and POP/IMAP → Enable IMAP
 
 ---
 
-## ⚙️ STEP 2 — Edit config.py
+## ⚙️ STEP 2 — Push to GitHub
 
-Open `config.py` and fill in:
-- `EMAIL_ADDRESS` — your Gmail
-- `EMAIL_PASSWORD` — App Password from Step 1
-- `COMPANY_NAME` — your company
-- `JOB_TITLE` — job you posted
-- `EMAIL_BODY` — your custom message with your links
-
----
-
-## ⚙️ STEP 3 — Upload to PythonAnywhere
-
-1. Log in to https://www.pythonanywhere.com
-2. Go to **Files** tab
-3. Create folder: `/home/yourusername/linkedin_auto_email/`
-4. Upload all files into that folder
-
----
-
-## ⚙️ STEP 4 — Install Dependencies
-
-In PythonAnywhere → **Bash console**:
 ```bash
-pip install --user imapclient
+git init
+git add .
+git commit -m "LinkedIn auto-email PHP system"
+git remote add origin https://github.com/YOU/linkedin-auto-email-php.git
+git push -u origin main
 ```
 
+> ⚠️ Make sure `.gitignore` is included so `vendor/` and `data/` aren't committed.
+
 ---
 
-## ⚙️ STEP 5 — Test It Manually
+## ⚙️ STEP 3 — Deploy on Railway
 
-In PythonAnywhere Bash console:
-```bash
-cd ~/linkedin_auto_email
-python main.py
+1. Go to https://railway.app → **New Project**
+2. Click **Deploy from GitHub repo** → select your repo
+3. Railway detects PHP via `nixpacks.toml` and installs Composer deps ✅
+
+---
+
+## ⚙️ STEP 4 — Set Environment Variables
+
+In Railway → Your Service → **Variables** tab:
+
+| Variable       | Value                            |
+|----------------|----------------------------------|
+| EMAIL_ADDRESS  | you@gmail.com                    |
+| EMAIL_PASSWORD | xxxx xxxx xxxx xxxx (App PW)     |
+| COMPANY_NAME   | Your Company Name                |
+| JOB_TITLE      | Software Engineer                |
+
+---
+
+## ⚙️ STEP 5 — Cron is Auto-configured ✅
+
+`railway.json` sets cron to run **every hour**:
+```json
+"cronSchedule": "0 * * * *"
 ```
 
-Check `auto_email.log` to see what happened.
+Change to every 30 mins: `*/30 * * * *`
 
 ---
 
-## ⚙️ STEP 6 — Schedule Automatic Runs
+## 📬 Two Ways to Get Applicant Emails
 
-1. Go to PythonAnywhere → **Tasks** tab
-2. Click **Add a new scheduled task**
-3. Set command: `python /home/yourusername/linkedin_auto_email/main.py`
-4. Set schedule: **Every hour** (free plan minimum)
-5. Save
+### Method A — Automatic (Gmail IMAP)
+LinkedIn emails you when someone applies:
+> "John Smith applied to your job: Software Engineer"
 
-Now it runs automatically every hour! ✅
+The script reads those, extracts the applicant's email, and sends your custom reply automatically.
 
----
-
-## 📬 TWO WAYS TO GET APPLICANT EMAILS
-
-### Method A: Automatic (Gmail IMAP) — Recommended
-- LinkedIn sends you a notification email when someone applies
-- This script reads those emails and extracts applicant info
-- Works automatically, no manual work needed
-
-### Method B: Manual CSV (Fallback)
-- Go to LinkedIn → Jobs → Your Job Post → Applicants
-- Export or manually copy applicant emails into `applicants.csv`
-- Run the script — it will email everyone in the CSV
-- Already-emailed people are skipped (tracked in sent_emails.json)
+### Method B — Manual CSV
+1. LinkedIn → Jobs → Your Post → Applicants → copy emails
+2. Paste into `applicants.csv`
+3. Push to GitHub → Railway redeploys → emails sent
 
 ---
 
 ## 📋 Troubleshooting
 
-| Issue | Fix |
-|-------|-----|
-| "Authentication failed" | Use App Password, not real Gmail password |
-| "IMAP disabled" | Enable IMAP in Gmail settings |
+| Problem | Fix |
+|---------|-----|
+| IMAP connection fails | Use App Password + enable IMAP in Gmail |
+| PHPMailer auth error | Double-check App Password in Railway Variables |
 | No applicants found | Use CSV method as fallback |
-| Emails going to spam | Add SPF/DKIM or use SendGrid instead of Gmail |
+| Emails go to spam | Switch to SendGrid free tier |
 
 ---
 
-## 🚀 Upgrade: Use SendGrid for Better Delivery
+## 🔍 View Logs
 
-Replace Gmail SMTP with SendGrid (free 100 emails/day):
-```python
-# In main.py, replace send_email() SMTP section with:
-import sendgrid
-from sendgrid.helpers.mail import Mail
+Railway → Your service → **Deployments** → click run → see stdout logs in real time.
 
-sg = sendgrid.SendGridAPIClient(api_key='YOUR_SENDGRID_API_KEY')
-message = Mail(from_email=EMAIL_ADDRESS, to_emails=to,
-               subject=subject, plain_text_content=body)
-sg.send(message)
+Local test:
+```bash
+composer install
+php main.php
 ```
